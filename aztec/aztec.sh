@@ -60,9 +60,9 @@ echo "  [3] Start/Restart"
 echo "  [4] View Logs"
 echo "  [5] Status"
 echo "  [6] Stop"
-echo "  [7] Clean Up"
-echo "  [8] Shell"
-echo "  [0] Exit ${RESET}"
+echo "  [7] Shell"
+echo "  [0] Exit"
+echo "  [RESET] Factory Reset${RESET}"
 
 echo -e "${YELLOW}"
 echo "  [10] Fetch L2Block + Sync Proof + PeerId"
@@ -76,13 +76,13 @@ case "$CHOICE" in
   4) view_logs ;;
   5) node_status ;;
   6) stop_node ;;
-  7) clean_up ;;
-  8) enter_container_shell ;;
+  7) enter_container_shell ;;
   10) fetchl2block_proof_peerid ;;
   0)
     echo -e "${YELLOW}Goodbye.${RESET}"
     exit 0
     ;;
+   "RESET") clean_up ;;
   *)
     echo -e "${RED}Invalid option.${RESET}"
     ;;
@@ -126,8 +126,17 @@ view_logs() {
 }
 
 node_status() {
+  list_runing_containers
+
+  echo -n "Enter a container, pick from the above list: "
+  read -r container
+
+  if [ -z "$container" ]; then
+    echo "No container name provided."
+    return 1
+  fi
+
   echo -e "${CYAN}Docker container status:${RESET}"
- #docker inspect aztec
   docker inspect -f \
 ' Name:  {{.Name}}
  Status:  {{.State.Status}}
@@ -136,7 +145,7 @@ node_status() {
  Finished At:  {{.State.FinishedAt}}
  Exit Code:  {{.State.ExitCode}}
  Restarting:  {{.State.Restarting}}
- OOM Killed:  {{.State.OOMKilled}}' aztec
+ OOM Killed:  {{.State.OOMKilled}}' $container
 }
 
 stop_node() {
@@ -157,10 +166,15 @@ reload_env() {
   fi
 }
 
-enter_container_shell() {
+list_runing_containers() {
   cd "$PROJECT_DIR"
   echo "List of running containers in this project (empty if none):"
   docker compose ps --format "{{.Name}}"
+}
+
+enter_container_shell() {
+  cd "$PROJECT_DIR"
+  list_runing_containers
 
   echo -n "Enter a container, pick from the above list: "
   read -r container
@@ -213,7 +227,6 @@ services:
       DATA_DIRECTORY: "/data"
       VALIDATOR_PRIVATE_KEY: "${VALIDATOR_PRIVATE_KEY}"
       COINBASE: "${VALIDATOR_PUBLIC_ADDRESS}"
-
 
       P2P_IP: "${P2P_IP}"
       LOG_LEVEL: "info"
