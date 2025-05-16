@@ -2,11 +2,8 @@
 
 A complete all-in-one setup script to deploy an **Aztec sequencer validator node**, along with **Sepolia execution (geth)** and **consensus (prysm)** clients — giving you your own fully functional RPC endpoints.
 
-
 *Can’t afford a paid RPC or a powerful VPS right now?
-No worries — I’m happy to share access to my self-hosted Sepolia RPC for just $5. It’s stable, fast, and perfect if you just need something that works.
-
-I’m only opening up a few spots, so let me know if you’re interested.*
+No worries — I’m happy to share access to my self-hosted Sepolia RPC for just $5. It’s stable, fast, and perfect if you just need something that works.*
 
 Need help or want more features added?  
 Follow me on [X (Twitter)](https://x.com/dlordkendex) and tag **@dlordkendex** with your request.
