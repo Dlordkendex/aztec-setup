@@ -12,7 +12,7 @@ Follow me on [X (Twitter)](https://x.com/dlordkendex) and tag **@dlordkendex** w
 Run the following in your terminal to clone this setup script:
 
 ```bash
-git clone https://github.com/dlordkendex/aztec-setup.git && chmod +x aztec/aztec/aztec.sh aztec/sepolia/sepolia.sh aztec/sepolia/checkup.sh
+git clone https://github.com/dlordkendex/aztec-setup.git && chmod +x aztec-setup/aztec/aztec.sh aztec-setup/sepolia/sepolia.sh aztec-setup/sepolia/checkup.sh
 ```
 
 ### Directory Structure:
