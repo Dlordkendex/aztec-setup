@@ -1,4 +1,4 @@
-# 🐺 Dlord's Aztec & Sepolia Setup Scripts
+# 🐺 Dlord's Aztec-Setup Scripts
 
 A complete all-in-one setup script to deploy an **Aztec sequencer validator node**, along with **Sepolia execution (geth)** and **consensus (prysm)** clients — giving you your own fully functional RPC endpoints.
 
