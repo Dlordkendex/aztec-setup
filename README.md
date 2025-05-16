@@ -122,3 +122,39 @@ I currently run the **Aztec sequencer** and **Sepolia Geth/Prysm clients** on a 
 - **Storage:** ~700 GB used, ~500 GB free  
 
 This real-world usage should help you decide what VPS setup best suits your needs and budget.
+
+**Results when i ran the checkup**
+All doesn't have to pass for your sepolia RPCs to work with aztec sequencer
+```
+Checking EL RPC methods...
+
+Checking CL REST endpoints...
+
+✅ EL methods passed: 22
+❌ EL methods failed: 13
+  - web3_clientVersion
+  - ["0x68656c6c6f20776f726c64"]
+  - net_peerCount
+  - eth_protocolVersion
+  - eth_coinbase
+  - eth_hashrate
+  - eth_accounts
+  - eth_sign
+  - eth_sendTransaction
+  - eth_sendRawTransaction
+  - eth_newBlockFilter
+  - eth_getFilterChanges
+  - eth_getFilterLogs
+
+✅ CL endpoints passed: 11
+❌ CL endpoints failed: 7
+  - /eth/v1/node/health
+  - /eth/v1/debug/beacon/states/head
+  - /eth/v1/events
+  - /eth/v1/validator/duties/proposer/1
+  - /eth/v1/validator/duties/attester/1
+  - /eth/v1/validator/blocks/1
+  - /eth/v1/validator/sync_committees/1
+
+All checks complete.
+```
