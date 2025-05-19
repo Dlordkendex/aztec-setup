@@ -1,4 +1,3 @@
-
 #!/bin/bash
 set -euo pipefail
 
@@ -17,7 +16,7 @@ COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
 GETH_DATA_DIR="$PROJECT_DIR/data/geth"
 PRYSM_DATA_DIR="$PROJECT_DIR/data/prysm"
 JWT_FILE="$PROJECT_DIR/data/jwt/jwt.hex"
-USEFUL_PORTS="30303 8545 6060 13000 3500 9000"
+USEFUL_PORTS="30303 6060 13000 9000"
 
 # Create directory structure
 mkdir -p "$PROJECT_DIR" "$GETH_DATA_DIR" "$PRYSM_DATA_DIR" "$(dirname "$JWT_FILE")"
@@ -159,6 +158,7 @@ stop_node() {
 clean_up() {
   cd "$PROJECT_DIR"
   docker compose down -v
+  rm -rf ./data
   echo -e "${GREEN}🚮 Node cleaned up successfully.${RESET}"
 }
 
@@ -209,37 +209,37 @@ services:
     image: ethereum/client-go:stable
     container_name: geth
     command:
+      --sepolia
       --syncmode=snap
-      --cache=1048
-      --ws
-      --ws.port=8545
-      --ws.addr=0.0.0.0
+      --cache=12288
+      --cache.database=50
+      --cache.gc=15
+      --cache.snapshot=20
+      --cache.trie=15
       --http
       --http.port=8545
       --http.addr=0.0.0.0
       --http.vhosts=*
-      --graphql
-      --graphql.vhosts=*
-      --metrics
-      --metrics.addr=0.0.0.0
-      --sepolia
-      --maxpeers=30
-      --authrpc.jwtsecret=/jwtsecret
+      --http.api=eth,net,web3
+      --authrpc.port=8551
       --authrpc.addr=0.0.0.0
       --authrpc.vhosts=*
+      --authrpc.jwtsecret=/jwtsecret
     volumes:
       - ${GETH_DATA_DIR}:/root/.ethereum
       - ${JWT_FILE}:/jwtsecret:ro
     ports:
-      - "30303:30303"
-      - "8545:8545"
-      - "6060:6060"
+      - 30303:30303
+      - 30303:30303/udp
+      - 8545:8545
+      - 8546:8546
+      - 8551:8551
     restart: always
     logging:
       driver: json-file
       options:
         max-size: "10m"
-        max-file: "2"
+        max-file: "1"
     networks:
       - sepolia_net
 
@@ -249,24 +249,27 @@ services:
     depends_on:
       - geth
     command:
-      --datadir=/data
       --sepolia
-      --http-host=0.0.0.0
+      --accept-terms-of-use
+      --datadir=/data
+      --disable-monitoring
       --rpc-host=0.0.0.0
       --execution-endpoint=http://geth:8551
       --jwt-secret=/jwtsecret
+      --rpc-port=4000
+      --grpc-gateway-corsdomain=*
+      --grpc-gateway-host=0.0.0.0
+      --grpc-gateway-port=3500
+      --min-sync-peers=3
+      --beacon-db-pruning=true
       --checkpoint-sync-url=https://beaconstate-sepolia.chainsafe.io
       --genesis-beacon-api-url=https://beaconstate-sepolia.chainsafe.io
-      --accept-terms-of-use
-      --beacon-db-pruning=true
     volumes:
       - ${PRYSM_DATA_DIR}:/data
       - ${JWT_FILE}:/jwtsecret:ro
     ports:
-      - "13000:13000"
       - "3500:3500"
       - "4000:4000"
-      - "9000:9000"
     restart: always
     logging:
       driver: json-file
