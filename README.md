@@ -104,7 +104,7 @@ Deploy and run **Sepolia Execution (geth)** and **Consensus (prysm)** clients on
 Sepolia sync can take **up to 4 hours**.
 
 ### Post-Sync RPC Endpoints:
-- **Execution Client RPC:** `http://your-ip-address:8548`  
+- **Execution Client RPC:** `http://your-ip-address:8545`  
 - **Consensus Client RPC:** `http://your-ip-address:3500`
 
 ---
