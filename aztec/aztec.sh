@@ -157,6 +157,7 @@ stop_node() {
 clean_up() {
   cd "$PROJECT_DIR"
   docker compose down -v
+  rm -rf ./data
   echo -e "${GREEN}🚮 Node cleaned up successfully.${RESET}"
 }
 
@@ -219,15 +220,14 @@ setup_compose_file() {
   cat >"$COMPOSE_FILE" <<EOF
 services:
   aztec:
-    image: aztecprotocol/aztec:0.85.0-alpha-testnet.8
+    image: aztecprotocol/aztec:alpha-testnet
     container_name: aztec
     environment:
       ETHEREUM_HOSTS: "${ETHEREUM_HOSTS}"
       L1_CONSENSUS_HOST_URLS: "${L1_CONSENSUS_HOST_URLS}"
       DATA_DIRECTORY: "/data"
       VALIDATOR_PRIVATE_KEY: "${VALIDATOR_PRIVATE_KEY}"
-      COINBASE: "${VALIDATOR_PUBLIC_ADDRESS}"
-
+   
       P2P_IP: "${P2P_IP}"
       LOG_LEVEL: "info"
       P2P_MAX_TX_POOL_SIZE: "1000000000"
@@ -239,7 +239,6 @@ services:
       - ${HTTP_PORT}:8080
     volumes:
       - ${AZTEC_DATA_DIR}:/data
-      - ./aztec.sh:/usr/local/bin/aztec.sh
     restart: unless-stopped
 EOF
 }
