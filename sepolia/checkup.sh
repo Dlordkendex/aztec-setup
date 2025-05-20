@@ -5,6 +5,19 @@
 EL_RPC_URL="http://localhost:8545"
 CL_API_URL="http://localhost:3500"
 
+#EL_RPC_URL="http://:8545"
+#CL_API_URL="http://:3500"
+
+INTERVAL_MS=500                  # Interval between checks
+REQ_TIMEOUT_MS=500            # Requests timeout 
+DURATION_MIN=1                   # Duration in minutes
+
+
+
+
+
+
+
 TIMEOUT=5
 CURL_OPTS="-s --fail --connect-timeout $TIMEOUT --max-time $TIMEOUT"
 CURL_OPTS_EL="$CURL_OPTS -X POST -H Content-Type:application/json --data"
@@ -178,6 +191,70 @@ if [ $failed_cl -gt 0 ]; then
     echo "  - $p"
   done
 fi
+
+
+
+
+
+
+
+
+
+
+
+echo -e "\n${COLOR_BLUE} starting latency tests...${COLOR_RESET}"
+
+
+
+
+
+
+#!/bin/bash
+
+INTERVAL_SEC=$(bc <<< "scale=3; $INTERVAL_MS/1000")
+DURATION_SEC=$((DURATION_MIN * 60))
+REQ_TIMEOUT_SEC=$(bc <<< "scale=3; $REQ_TIMEOUT_MS/1000")
+
+# === L1 RPC (EL) ===
+echo "Checking L1 RPC ($EL_RPC_URL) for $DURATION_MIN minutes every ${INTERVAL_MS}ms..."
+l1_success=0
+l1_fail=0
+end_time=$((SECONDS + DURATION_SEC))
+while [ $SECONDS -lt $end_time ]; do
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+    --max-time "$REQ_TIMEOUT_SEC" \
+    -X POST -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' "$EL_RPC_URL")
+
+  if [ "$http_code" -eq 200 ]; then
+    ((l1_success++))
+  else
+    ((l1_fail++))
+  fi
+
+  sleep "$INTERVAL_SEC"
+done
+echo -e "L1 RPC results:\n✅: $l1_success\n❌: $l1_fail"
+
+# === Beacon RPC (CL) ===
+echo -e "\nChecking Beacon RPC ($CL_API_URL) for $DURATION_MIN minutes every ${INTERVAL_MS}ms..."
+cl_success=0
+cl_fail=0
+end_time=$((SECONDS + DURATION_SEC))
+while [ $SECONDS -lt $end_time ]; do
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+    --max-time "$REQ_TIMEOUT_SEC" \
+    "$CL_API_URL/eth/v1/beacon/headers/head")
+
+  if [ "$http_code" -eq 200 ]; then
+    ((cl_success++))
+  else
+    ((cl_fail++))
+  fi
+
+  sleep "$INTERVAL_SEC"
+done
+echo -e "Beacon RPC results:\n✅: $cl_success\n❌: $cl_fail"
 
 echo -e "\n${COLOR_BLUE}All checks complete.${COLOR_RESET}"
 exit 0
