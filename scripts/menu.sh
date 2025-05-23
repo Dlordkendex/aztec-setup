@@ -113,7 +113,7 @@ main_menu() {
     clear
     echo -e "${COLOR_CYAN}${COLOR_BOLD}"
     echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                     👻 DLORD • AZTEC SETUP                    ║"
+    echo "║                    👻 DLORD • AZTEC SETUP                    ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
 
     echo -e "${COLOR_CYAN}Choose an option:"
