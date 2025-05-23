@@ -8,12 +8,38 @@ YELLOW="\033[1;33m"
 GREEN="\033[1;32m"
 RED="\033[1;31m"
 
-PROJECT_DIR="$(pwd)"
+SCRIPT_DIR_ABS="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+
+import_scripts() {
+  local base_dir="$1"
+  shift
+  local scripts_to_import=("$@")
+
+  for script_name in "${scripts_to_import[@]}"; do
+    # Find script file recursively inside base_dir
+    local found_file
+    found_file=$(find "$base_dir" -type f -name "$script_name" -print -quit)
+
+    if [[ -z "$found_file" ]]; then
+      echo "Error: Script '$script_name' not found in $base_dir" >&2
+      exit 1
+    fi
+
+    # Source the found script
+    if ! source "$found_file"; then
+      echo "Error: Failed to source '$found_file'" >&2
+      exit 1
+    fi
+  done
+}
+
+import_scripts "$SCRIPT_DIR_ABS/../scripts" menu.sh
+
+PROJECT_DIR=$SCRIPT_DIR_ABS
 ENV_FILE="$PROJECT_DIR/.env"
 AZTEC_DATA_DIR="$PROJECT_DIR/data/aztec"
 COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
-USEFUL_PORTS="40400 8080 22"
-
+USEFUL_PORTS="40400 8080"
 
 # Create directory structure
 mkdir -p "$PROJECT_DIR" "$AZTEC_DATA_DIR"
@@ -24,14 +50,22 @@ if [[ ! -f "$ENV_FILE" ]]; then
   cat <<EOF >"$ENV_FILE"
 ## Press Ctrl+S to save, then Ctrl+X to exit
 #
-#
+# Aztec Node Configuration
+# Refer to Aztec documentation for details on these variables.
+
 VALIDATOR_PRIVATE_KEY=
 VALIDATOR_PUBLIC_ADDRESS=
 P2P_IP=
 ETHEREUM_HOSTS=
 L1_CONSENSUS_HOST_URLS=
+
+# Default ports, can be overridden if necessary
 TCP_UDP_PORT=40400
 HTTP_PORT=8080
+
+#  Additional arguments, flags and options can be passed to the entrypoint
+EXTRA_ARGS=""
+
 #
 #
 ## Press Ctrl+S, then Ctrl+X to save and exit
@@ -43,54 +77,42 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 
-CHOICE=""
-main_menu(){
-clear
-echo -e "${CYAN}${BOLD}"
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                  👻 DLORD • AZTEC SETUP                      ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
-echo -e "${RESET}"
+
+# Register additional menu actions
+register_menu_item "[10] Fetch L2 Block + Sync Proof" show_l2_block_and_sync_proof
+register_menu_item "[11] Retrieve Sequencer PeerId" get_sequencer_peer_id_from_logs
+register_menu_item "[12] Display Public IP Address" fetch_ip
 
 
-echo -e "${CYAN}Choose an option:"
-echo "  [1] Install/Reinstall"
-echo "  [2] Edit .env file"
-echo "  [3] Start/Restart"
-echo "  [4] View Logs"
-echo "  [5] Status"
-echo "  [6] Stop"
-echo "  [7] Shell"
-echo "  [0] Exit"
-echo "  [RESET] Factory Reset${RESET}"
+setup_compose_file() {
+  cat >"$COMPOSE_FILE" <<EOF
+services:
+  aztec:
+    image: aztecprotocol/aztec:alpha-testnet
+    container_name: aztec
+    environment:
+      ETHEREUM_HOSTS: "${ETHEREUM_HOSTS}"
+      L1_CONSENSUS_HOST_URLS: "${L1_CONSENSUS_HOST_URLS}"
+      DATA_DIRECTORY: "/data"
+      VALIDATOR_PRIVATE_KEY: "${VALIDATOR_PRIVATE_KEY}"
 
-echo -e "${YELLOW}"
-echo "  [10] Fetch L2Block + Sync Proof + PeerId"
-echo "${RESET}"
-read -p "👉 Enter choice: " CHOICE
-
-case "$CHOICE" in
-  1) install_reinstall ;;
-  2) edit_env ;;
-  3) start_restart ;;
-  4) view_logs ;;
-  5) node_status ;;
-  6) stop_node ;;
-  7) enter_container_shell ;;
-  10) fetchl2block_proof_peerid ;;
-  0)
-    echo -e "${YELLOW}Goodbye.${RESET}"
-    exit 0
-    ;;
-   "RESET") clean_up ;;
-  *)
-    echo -e "${RED}Invalid option.${RESET}"
-    ;;
-esac
+      P2P_IP: "${P2P_IP}"
+      LOG_LEVEL: "info"
+      P2P_MAX_TX_POOL_SIZE: "1000000000"
+    entrypoint: >
+      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet start --node --archiver --sequencer  ${EXTRA_ARGS}'
+    ports:
+      - ${TCP_UDP_PORT}:40400/tcp
+      - ${TCP_UDP_PORT}:40400/udp
+      - ${HTTP_PORT}:8080
+    volumes:
+      - ${AZTEC_DATA_DIR}:/data
+    restart: unless-stopped
+EOF
 }
 
 install_reinstall() {
-  read -p "Warning: This will delete some data and volumes. Do you want to continue? [y/N]: " confirm
+  read -p "Warning: This might Install newer version. Do you want to continue? [y/N]: " confirm
   [[ "$confirm" != [yY] ]] && echo "Cancelled." && return
 
   echo -e "${CYAN}Install/Reinstall started...${RESET}"
@@ -98,8 +120,9 @@ install_reinstall() {
   allow_ports $USEFUL_PORTS
 
   cd "$PROJECT_DIR"
-  docker compose down -v
+  docker compose down
   docker compose build --no-cache
+  docker compose pull
   echo -e "${GREEN}✅ Install/Reinstall completed successfully!${RESET}"
 }
 
@@ -115,7 +138,7 @@ edit_env() {
 start_restart() {
   cd "$PROJECT_DIR"
   docker compose down
-  docker compose up -d
+  docker compose up -d --force-recreate
   echo -e "${GREEN}✅🔃 Node restarted successfully ${RESET}"
 }
 
@@ -199,50 +222,6 @@ enter_container_shell() {
   docker compose exec "$container" "$shell"
 }
 
-healthcheck(){
-  STATUS=$(curl -fs http://localhost/health > /dev/null 2>&1; echo $?)
-  if [ "$STATUS" -eq 0 ]; then
-    EMOJI="🟩"
-  else
-    EMOJI="🟥"
-  fi
-
-  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-    -d chat_id="${TELEGRAM_CHAT_ID}" \
-    -d parse_mode="MarkdownV2" \
-    -d text="*Container:* \`aztec\`
-*Health:* ${EMOJI}"
-
-  exit $STATUS
-}
-
-setup_compose_file() {
-  cat >"$COMPOSE_FILE" <<EOF
-services:
-  aztec:
-    image: aztecprotocol/aztec:alpha-testnet
-    container_name: aztec
-    environment:
-      ETHEREUM_HOSTS: "${ETHEREUM_HOSTS}"
-      L1_CONSENSUS_HOST_URLS: "${L1_CONSENSUS_HOST_URLS}"
-      DATA_DIRECTORY: "/data"
-      VALIDATOR_PRIVATE_KEY: "${VALIDATOR_PRIVATE_KEY}"
-   
-      P2P_IP: "${P2P_IP}"
-      LOG_LEVEL: "info"
-      P2P_MAX_TX_POOL_SIZE: "1000000000"
-    entrypoint: >
-      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network=alpha-testnet --node --archiver --sequencer'
-    ports:
-      - ${TCP_UDP_PORT}:40400/tcp
-      - ${TCP_UDP_PORT}:40400/udp
-      - ${HTTP_PORT}:8080
-    volumes:
-      - ${AZTEC_DATA_DIR}:/data
-    restart: unless-stopped
-EOF
-}
-
 install_dependencies() {
   echo -e "\n🔧 ${YELLOW}${BOLD}Setting up system dependencies...${RESET}"
 
@@ -276,10 +255,25 @@ install_dependencies() {
 ####################################################################################################
 
 
-fetchl2block_proof_peerid() {
+get_sequencer_peer_id_from_logs() {
+  echo -e "\n${YELLOW}🆔 Retrieving sequencer PeerId..."
+
+  local peer_id
+  peer_id=$(docker logs aztec 2>&1 | grep -i '"peerId"' | grep -o '"peerId":"[^"]*"' | cut -d'"' -f4 | head -n 1)
+
+  if [[ -n "$peer_id" ]]; then
+    echo -e "✅ Sequencer PeerId: ${BOLD}$peer_id${RESET}"
+  else
+    echo -e "❌ ${RED}PeerId not found in logs.${RESET}"
+  fi
+}
+
+show_l2_block_and_sync_proof() {
   echo -e "\n🔍 ${YELLOW}Fetching latest L2 block info..."
 
-  BLOCK=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' http://localhost:$HTTP_PORT | jq -r ".result.proven.number")
+  BLOCK=$(curl -s -X POST -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+    http://localhost:$HTTP_PORT | jq -r ".result.proven.number")
 
   if [[ -z "$BLOCK" || "$BLOCK" == "null" ]]; then
     echo -e "❌ ${RED}Failed to fetch block number.${RESET}"
@@ -287,21 +281,14 @@ fetchl2block_proof_peerid() {
   fi
 
   echo -e "✅ Current L2 Block Number: ${BOLD}$BLOCK${RESET}"
-  echo -e "\n🔍 ${CYAN} computing Proof..."
+  echo -e "\n🔍 ${CYAN}Computing Proof..."
 
-  PROOF=$(curl -s -X POST -H 'Content-Type: application/json' -d "{\"jsonrpc\":\"2.0\",\"method\":\"node_getArchiveSiblingPath\",\"params\":[\"$BLOCK\",\"$BLOCK\"],\"id\":67}" http://localhost:$HTTP_PORT | jq -r ".result")
+  PROOF=$(curl -s -X POST -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"method\":\"node_getArchiveSiblingPath\",\"params\":[\"$BLOCK\",\"$BLOCK\"],\"id\":67}" \
+    http://localhost:$HTTP_PORT | jq -r ".result")
 
-  echo -e "🔗 Sync Proof:"
-  echo -e "$PROOF ${RESET}"
-  echo -e "\n${YELLOW}🆔 Retrieving sequencer PeerId..."
+  echo -e "🔗 Sync Proof:\n$PROOF ${RESET}"
 
-  PEER_ID=$(docker logs aztec 2>&1 | grep -i '"peerId"' | grep -o '"peerId":"[^"]*"' | cut -d'"' -f4 | head -n 1)
-
-  if [[ -n "$PEER_ID" ]]; then
-    echo -e "✅ Sequencer PeerId: ${BOLD}$PEER_ID${RESET}"
-  else
-    echo -e "❌ ${RED}PeerId not found in logs.${RESET}"
-  fi
 }
 
 fetch_ip() {
@@ -309,8 +296,6 @@ fetch_ip() {
   ip=${ip:-127.0.0.1}
 
   echo -e "📡 ${YELLOW}Detected server IP: ${GREEN}${BOLD}${ip}${RESET}"
-
-  echo "$ip"
 }
 
 allow_ports() {
