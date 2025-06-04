@@ -17,7 +17,7 @@ error()   { echo -e "${COLOR_RED}${1}${COLOR_RESET}" >&2; }
 
 pause() {
   echo
-  read -rp "${COLOR_BOLD}${COLOR_GREEN} ⬅️ Back to menu! ↩️  ${COLOR_RESET}"
+  read -rp "${COLOR_BOLD}${COLOR_GREEN}⬅️  Back to menu! ↩️  ${COLOR_RESET}"
 }
 
 # External hooks
@@ -95,6 +95,7 @@ show_help() {
   echo "  [5] Status                - Check node status and health."
   echo "  [6] Stop                  - Stop the running node."
   echo "  [7] Shell                 - Open an interactive shell in the container."
+  echo "  [HELP] Help               - Show help information."
   echo "  [RESET] Factory Reset     - Erase all data and reset to defaults."
   echo "  [0] Exit                  - Exit the menu."
   echo
