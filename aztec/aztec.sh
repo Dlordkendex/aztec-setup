@@ -98,6 +98,8 @@ services:
       P2P_IP: "${P2P_IP}"
       LOG_LEVEL: "info"
       P2P_MAX_TX_POOL_SIZE: "1000000000"
+      OTEL_RESOURCE_ATTRIBUTES: "aztec.node_role=sequencer,aztec.registry_address=0x4d2cc1d5fb6be65240e0bfc8154243e69c0fb19e"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "https://telemetry.alpha-testnet.aztec.network/v1/metrics"
     entrypoint: >
       sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet start --node --archiver --sequencer  ${EXTRA_ARGS}'
     ports:
