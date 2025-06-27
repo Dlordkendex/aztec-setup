@@ -81,6 +81,7 @@ fi
 register_menu_item "[10] Fetch L2 Block + Sync Proof" show_l2_block_and_sync_proof
 register_menu_item "[11] Retrieve Sequencer PeerId" get_sequencer_peer_id_from_logs
 register_menu_item "[12] Display Public IP Address" fetch_ip
+register_menu_item "[13] Update Setup" update_script
 
 
 setup_compose_file() {
@@ -309,6 +310,49 @@ allow_ports() {
     done
   done
   sudo ufw --force enable
+}
+
+update_script() {
+  echo -e "${YELLOW}Attempting to update by pulling the latest changes from the repository...${RESET}"
+
+  # Find the root of the git repository
+  local repo_root
+  repo_root=$(git -C "$SCRIPT_DIR_ABS" rev-parse --show-toplevel 2>/dev/null)
+
+  if [[ -z "$repo_root" ]]; then
+    echo -e "${RED}Error: This script does not seem to be in a git repository.${RESET}"
+    echo "Please clone the repository using 'git clone https://github.com/Dlordkendex/aztec-setup' to enable updates."
+    return 1
+  fi
+
+  cd "$repo_root"
+  echo "Fetching latest information from remote..."
+  git fetch
+
+  # Check if the local branch is behind the remote
+  if git status -uno | grep -q 'Your branch is up to date'; then
+    echo -e "${GREEN}Repository is already up to date. No update needed.${RESET}"
+    return 0
+  fi
+
+  echo -e "${CYAN}A new version of the repository is available.${RESET}"
+  echo -e "${BOLD}${RED}WARNING: This will discard any local changes you have made to the files in this repository.${RESET}"
+  read -p "Do you want to proceed and overwrite local changes? [y/N]: " confirm
+  if [[ "$confirm" != [yY] ]]; then
+    echo "Update cancelled."
+    return
+  fi
+
+  echo "Updating to the latest version..."
+  # Reset the current branch to its upstream version, discarding all local changes
+  if git reset --hard @{u}; then
+    echo -e "${GREEN}✅ Repository updated successfully!${RESET}"
+    echo "Please restart the script to apply the changes."
+    exit 0
+  else
+    echo -e "${RED}Error: Failed to update the repository.${RESET}"
+    return 1
+  fi
 }
 
 
