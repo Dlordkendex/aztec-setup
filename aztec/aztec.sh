@@ -82,7 +82,7 @@ register_menu_item "[10] Fetch L2 Block + Sync Proof" show_l2_block_and_sync_pro
 register_menu_item "[11] Retrieve Sequencer PeerId" get_sequencer_peer_id_from_logs
 register_menu_item "[12] Display Public IP Address" fetch_ip
 register_menu_item "[13] Update Setup" update_script
-xx
+
 
 setup_compose_file() {
   cat >"$COMPOSE_FILE" <<EOF
