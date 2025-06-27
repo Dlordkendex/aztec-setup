@@ -336,7 +336,6 @@ update_script() {
   fi
 
   echo -e "${CYAN}A new version of the repository is available.${RESET}"
-  echo -e "${BOLD}${RED}WARNING: This will discard any local changes you have made to the files in this repository.${RESET}"
   read -p "Do you want to proceed and overwrite local changes? [y/N]: " confirm
   if [[ "$confirm" != [yY] ]]; then
     echo "Update cancelled."
